@@ -30,8 +30,18 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# Environment files (specific patterns for security)
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+.env.staging
+.env.*.local
+
+# Allow environment templates (no secrets)
+!.env.example
+!.env.local.template
 
 # vercel
 .vercel
@@ -39,3 +49,100 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# ===========================================
+# HEALTHCARE SECURITY ADDITIONS
+# ===========================================
+
+# Environment files (Healthcare-grade security)
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.staging.local
+.env.*.local
+
+# Firebase Security (Multiple patterns for comprehensive protection)
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+auth-debug.log
+storage-debug.log
+
+# Service Account Keys (Extra protection layers)
+serviceAccountKey.json
+**/serviceAccountKey.json
+firebase-service-account.json
+firebase-adminsdk-*.json
+google-services.json
+*.p12
+*.pem
+
+# HIPAA Compliance - Sensitive Data Protection
+*.phi
+*.pii
+*patient*data*
+*resident*data*
+*medical*records*
+audit-logs/
+hipaa-logs/
+compliance-reports/
+
+# Healthcare-specific Data Files
+medical-records/
+patient-exports/
+resident-exports/
+evaluation-backups/
+assessment-data/
+schedule-backups/
+
+# Development & Testing
+coverage/
+test-results/
+playwright-report/
+.nyc_output/
+junit.xml
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+lerna-debug.log*
+
+# IDE & OS Security
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+
+# Build & Runtime Security
+.next/
+dist/
+build/
+.cache/
+.turbo/
+node_modules/
+
+# Backup & Temporary Files
+*.bak
+*.tmp
+*.temp
+temp/
+tmp/
+*.backup
+
+# Database Exports & Backups
+*.sql
+*.db
+*.sqlite
+*.sqlite3
+firestore-export-*/
+database-backup-*/
