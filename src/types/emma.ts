@@ -20,6 +20,7 @@ export type EvaluationStatus =
 
 export type EMMAButtonVariant = 
   | 'medical-primary' 
+  | 'medical-secondary'
   | 'medical-success' 
   | 'medical-warning' 
   | 'medical-error' 
@@ -110,8 +111,10 @@ export interface EMMALoginFormProps {
   onSubmit?: (formData: LoginFormData) => void;
   loading?: boolean;
   error?: string | null;
+  successMessage?: string | null;
   title?: string;
   subtitle?: string;
+  onSwitchToRegister?: () => void;
 }
 
 // Healthcare Theme Extension Types (already defined in theme file)

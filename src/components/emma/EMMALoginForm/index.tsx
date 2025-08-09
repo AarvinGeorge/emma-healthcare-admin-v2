@@ -72,8 +72,10 @@ const EMMALoginForm: React.FC<EMMALoginFormProps> = ({
   onSubmit,
   loading = false,
   error = null,
+  successMessage = null,
   title = 'EMMA Healthcare',
   subtitle = 'Medical Education Administration',
+  onSwitchToRegister,
 }) => {
   const [formData, setFormData] = useState<LoginFormData>({
     email: '',
@@ -157,6 +159,13 @@ const EMMALoginForm: React.FC<EMMALoginFormProps> = ({
         {error && (
           <Alert severity="error" sx={{ mb: 3 }}>
             {error}
+          </Alert>
+        )}
+
+        {/* Success Alert */}
+        {successMessage && (
+          <Alert severity="success" sx={{ mb: 3 }}>
+            {successMessage}
           </Alert>
         )}
 
@@ -250,6 +259,29 @@ const EMMALoginForm: React.FC<EMMALoginFormProps> = ({
             By signing in, you agree to comply with healthcare data privacy regulations
             and institutional security policies.
           </Typography>
+          
+          {/* Registration Link */}
+          {onSwitchToRegister && (
+            <Box textAlign="center" mt={2}>
+              <Typography variant="body2">
+                Don't have an account?{' '}
+                <Link
+                  component="button"
+                  variant="body2"
+                  onClick={onSwitchToRegister}
+                  sx={{ 
+                    fontWeight: 500,
+                    textDecoration: 'none',
+                    '&:hover': {
+                      textDecoration: 'underline',
+                    },
+                  }}
+                >
+                  Create an account
+                </Link>
+              </Typography>
+            </Box>
+          )}
         </Box>
       </LoginCard>
     </LoginContainer>

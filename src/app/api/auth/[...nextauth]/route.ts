@@ -9,9 +9,8 @@ import NextAuth from 'next-auth'
 import type { NextAuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import { signInWithEmailAndPassword } from 'firebase/auth'
-import { doc, getDoc } from 'firebase/firestore'
-import { auth, db } from '@/lib/firebase'
-import { logAdminAction } from '@/lib/firebase-admin'
+import { auth } from '@/lib/firebase'
+import { adminDb, logAdminAction } from '@/lib/firebase-admin'
 import type { UserRole, Department, PGYLevel } from '@/types/user'
 
 const authOptions: NextAuthOptions = {
@@ -28,45 +27,10 @@ const authOptions: NextAuthOptions = {
           return null
         }
 
-        // Development-safe fallback when Firebase isn't configured
-        if (process.env.NODE_ENV === 'development' && !process.env.FIREBASE_PROJECT_ID) {
-          console.warn('[DEV] Firebase not configured, using mock authentication')
-          
-          // Mock successful authentication for development
-          if (credentials.email && credentials.password) {
-            return {
-              id: 'dev-user-123',
-              email: credentials.email,
-              role: 'ADMIN' as any,
-              firstName: 'Development',
-              lastName: 'User',
-              department: 'INTERNAL_MEDICINE' as any,
-              pgyLevel: undefined,
-              permissions: {
-                canViewAllUsers: true,
-                canCreateUsers: true,
-                canEditUsers: true,
-                canDeleteUsers: true,
-                canViewAllResidents: true,
-                canEditResidents: true,
-                canViewAllSchedules: true,
-                canCreateSchedules: true,
-                canEditSchedules: true,
-                canDeleteSchedules: true,
-                canViewAllEvaluations: true,
-                canCreateEvaluations: true,
-                canEditEvaluations: true,
-                canAccessReports: true,
-                canExportData: true,
-                canViewAuditLogs: true,
-                canManageSystem: true,
-              },
-              displayName: 'Development User',
-              institutionId: 'dev-institution',
-              emailVerified: true
-            }
-          }
-          return null
+        // Validate Firebase configuration
+        if (!process.env.FIREBASE_PROJECT_ID || !process.env.FIREBASE_CLIENT_EMAIL || !process.env.FIREBASE_PRIVATE_KEY) {
+          console.error('[EMMA] Firebase configuration incomplete. Check environment variables.')
+          throw new Error('Firebase configuration is required for authentication')
         }
 
         try {
@@ -77,17 +41,24 @@ const authOptions: NextAuthOptions = {
             credentials.password
           )
 
-          // Fetch user profile from Firestore
-          const userDoc = await getDoc(doc(db, 'users', userCredential.user.uid))
+          // Fetch user profile from Firestore using Admin SDK (bypasses security rules)
+          const userDoc = await adminDb.collection('users').doc(userCredential.user.uid).get()
 
-          if (!userDoc.exists()) {
+          if (!userDoc.exists) {
             throw new Error('User profile not found in Firestore')
           }
 
           const userData = userDoc.data()
 
           // Healthcare access control - check if user is active
-          if (!userData.isActive || userData.status !== 'ACTIVE') {
+          const requireEmailVerification = process.env.NEXT_PUBLIC_REQUIRE_EMAIL_VERIFICATION === 'true'
+          const allowedStatuses = requireEmailVerification ? ['ACTIVE'] : ['ACTIVE', 'PENDING_VERIFICATION']
+          
+          if (!userData.isActive && requireEmailVerification) {
+            throw new Error('Account is inactive. Please verify your email address.')
+          }
+          
+          if (!allowedStatuses.includes(userData.status)) {
             throw new Error('Account is inactive or suspended')
           }
 

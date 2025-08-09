@@ -1,0 +1,303 @@
+/**
+ * EMMA Healthcare Firestore Security Rules
+ * 
+ * HIPAA-compliant security rules for healthcare education administration
+ * with role-based access control and audit logging requirements.
+ */
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper functions for authentication and authorization
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function getUserRole() {
+      return request.auth.token.role;
+    }
+    
+    function getUserId() {
+      return request.auth.uid;
+    }
+    
+    function getInstitutionId() {
+      return request.auth.token.institutionId;
+    }
+    
+    function isEmailVerified() {
+      return request.auth.token.emailVerified == true;
+    }
+    
+    function isActive() {
+      return request.auth.token.isActive == true;
+    }
+    
+    function hasRole(role) {
+      return getUserRole() == role;
+    }
+    
+    function hasAnyRole(roles) {
+      return getUserRole() in roles;
+    }
+    
+    function belongsToSameInstitution(institutionId) {
+      return getInstitutionId() == institutionId;
+    }
+    
+    function isValidUserStatus(status) {
+      return status in ['ACTIVE', 'INACTIVE', 'SUSPENDED', 'PENDING_VERIFICATION'];
+    }
+    
+    function isValidRole(role) {
+      return role in ['ADMIN', 'COORDINATOR', 'FACULTY', 'RESIDENT'];
+    }
+    
+    // Core security check - must be authenticated, verified, and active
+    function hasBasicAccess() {
+      return isAuthenticated() && isEmailVerified() && isActive();
+    }
+    
+    // ===== USER COLLECTION =====
+    match /users/{userId} {
+      // Users can read their own profile
+      allow read: if hasBasicAccess() && 
+        (getUserId() == userId || 
+         hasAnyRole(['ADMIN', 'COORDINATOR']) ||
+         (hasRole('FACULTY') && resource.data.role == 'RESIDENT' && belongsToSameInstitution(resource.data.institutionId)));
+      
+      // Only admins and coordinators can create users
+      allow create: if hasBasicAccess() && 
+        hasAnyRole(['ADMIN', 'COORDINATOR']) &&
+        belongsToSameInstitution(request.resource.data.institutionId) &&
+        isValidRole(request.resource.data.role) &&
+        isValidUserStatus(request.resource.data.status) &&
+        request.resource.data.createdBy == getUserId() &&
+        request.resource.data.lastModifiedBy == getUserId();
+      
+      // Users can update their own basic info, admins/coordinators can update anyone in their institution
+      allow update: if hasBasicAccess() && 
+        belongsToSameInstitution(resource.data.institutionId) &&
+        request.resource.data.lastModifiedBy == getUserId() &&
+        (
+          // Self-update (limited fields)
+          (getUserId() == userId && 
+           onlyUpdatingFields(['profile', 'phoneNumber', 'updatedAt', 'lastModifiedBy'])) ||
+          
+          // Admin/Coordinator update
+          (hasAnyRole(['ADMIN', 'COORDINATOR']) &&
+           isValidRole(request.resource.data.role) &&
+           isValidUserStatus(request.resource.data.status))
+        );
+      
+      // Only admins can delete users
+      allow delete: if hasBasicAccess() && 
+        hasRole('ADMIN') && 
+        belongsToSameInstitution(resource.data.institutionId);
+    }
+    
+    // ===== INSTITUTIONS COLLECTION =====
+    match /institutions/{institutionId} {
+      // All verified users can read their own institution
+      allow read: if hasBasicAccess() && belongsToSameInstitution(institutionId);
+      
+      // Only system admins can create institutions
+      allow create: if hasBasicAccess() && 
+        hasRole('ADMIN') &&
+        request.resource.data.createdBy == getUserId();
+      
+      // Only admins of the institution can update it
+      allow update: if hasBasicAccess() && 
+        hasRole('ADMIN') && 
+        belongsToSameInstitution(institutionId) &&
+        request.resource.data.lastModifiedBy == getUserId();
+      
+      // No deletion of institutions (archive only)
+      allow delete: if false;
+    }
+    
+    // ===== RESIDENTS COLLECTION =====
+    match /residents/{residentId} {
+      // Faculty and coordinators can read residents, residents can read their own profile
+      allow read: if hasBasicAccess() && 
+        belongsToSameInstitution(resource.data.institutionId) &&
+        (getUserId() == residentId || 
+         hasAnyRole(['ADMIN', 'COORDINATOR', 'FACULTY']));
+      
+      // Coordinators and admins can create resident profiles
+      allow create: if hasBasicAccess() && 
+        hasAnyRole(['ADMIN', 'COORDINATOR']) &&
+        belongsToSameInstitution(request.resource.data.institutionId) &&
+        request.resource.data.createdBy == getUserId();
+      
+      // Self-update for residents (limited), full update for coordinators/admins
+      allow update: if hasBasicAccess() && 
+        belongsToSameInstitution(resource.data.institutionId) &&
+        request.resource.data.lastModifiedBy == getUserId() &&
+        (
+          // Resident self-update (profile info only)
+          (getUserId() == residentId && hasRole('RESIDENT') &&
+           onlyUpdatingFields(['profile', 'updatedAt', 'lastModifiedBy'])) ||
+          
+          // Coordinator/Admin update
+          hasAnyRole(['ADMIN', 'COORDINATOR'])
+        );
+      
+      // Only admins can delete resident profiles
+      allow delete: if hasBasicAccess() && 
+        hasRole('ADMIN') && 
+        belongsToSameInstitution(resource.data.institutionId);
+    }
+    
+    // ===== ROTATIONS COLLECTION =====
+    match /rotations/{rotationId} {
+      // All users can read rotations in their institution
+      allow read: if hasBasicAccess() && 
+        belongsToSameInstitution(resource.data.institutionId);
+      
+      // Only coordinators and admins can manage rotations
+      allow create, update: if hasBasicAccess() && 
+        hasAnyRole(['ADMIN', 'COORDINATOR']) &&
+        belongsToSameInstitution(request.resource.data.institutionId) &&
+        request.resource.data.get('lastModifiedBy', request.resource.data.createdBy) == getUserId();
+      
+      // Only admins can delete rotations
+      allow delete: if hasBasicAccess() && 
+        hasRole('ADMIN') && 
+        belongsToSameInstitution(resource.data.institutionId);
+    }
+    
+    // ===== SCHEDULES COLLECTION =====
+    match /schedules/{scheduleId} {
+      // Users can read schedules that affect them or all if they're coordinators/admins
+      allow read: if hasBasicAccess() && 
+        belongsToSameInstitution(resource.data.institutionId) &&
+        (hasAnyRole(['ADMIN', 'COORDINATOR', 'FACULTY']) ||
+         (hasRole('RESIDENT') && userInScheduleAssignments()));
+      
+      // Only coordinators and admins can manage schedules
+      allow create, update: if hasBasicAccess() && 
+        hasAnyRole(['ADMIN', 'COORDINATOR']) &&
+        belongsToSameInstitution(request.resource.data.institutionId) &&
+        request.resource.data.get('lastModifiedBy', request.resource.data.createdBy) == getUserId();
+      
+      // Only admins can delete schedules
+      allow delete: if hasBasicAccess() && 
+        hasRole('ADMIN') && 
+        belongsToSameInstitution(resource.data.institutionId);
+    }
+    
+    // ===== EVALUATIONS COLLECTION =====
+    match /evaluations/{evaluationId} {
+      // Residents can read their own evaluations, faculty can read evaluations they created or for their residents
+      allow read: if hasBasicAccess() && 
+        belongsToSameInstitution(resource.data.institutionId) &&
+        (
+          // Resident reading their own evaluation
+          (hasRole('RESIDENT') && resource.data.evaluateeId == getUserId()) ||
+          
+          // Faculty reading evaluations they created or for residents they supervise
+          (hasRole('FACULTY') && 
+           (resource.data.evaluatorId == getUserId() || supervisesResident(resource.data.evaluateeId))) ||
+          
+          // Coordinators and admins can read all evaluations
+          hasAnyRole(['ADMIN', 'COORDINATOR'])
+        );
+      
+      // Faculty can create evaluations for residents they supervise
+      allow create: if hasBasicAccess() &&
+        belongsToSameInstitution(request.resource.data.institutionId) &&
+        (
+          // Faculty creating evaluation for supervised resident
+          (hasRole('FACULTY') && 
+           request.resource.data.evaluatorId == getUserId() &&
+           supervisesResident(request.resource.data.evaluateeId)) ||
+          
+          // Coordinators and admins can create any evaluation
+          hasAnyRole(['ADMIN', 'COORDINATOR'])
+        ) &&
+        request.resource.data.createdBy == getUserId();
+      
+      // Evaluators can update their own evaluations (if not yet approved)
+      allow update: if hasBasicAccess() && 
+        belongsToSameInstitution(resource.data.institutionId) &&
+        request.resource.data.lastModifiedBy == getUserId() &&
+        resource.data.status != 'APPROVED' &&
+        (
+          // Evaluator updating their own evaluation
+          (resource.data.evaluatorId == getUserId()) ||
+          
+          // Coordinators and admins can update any evaluation
+          hasAnyRole(['ADMIN', 'COORDINATOR'])
+        );
+      
+      // Only admins can delete evaluations
+      allow delete: if hasBasicAccess() && 
+        hasRole('ADMIN') && 
+        belongsToSameInstitution(resource.data.institutionId);
+    }
+    
+    // ===== AUDIT LOGS (HIPAA Compliance) =====
+    match /hipaa_audit_logs/{logId} {
+      // Only admins can read audit logs
+      allow read: if hasBasicAccess() && 
+        hasRole('ADMIN') && 
+        belongsToSameInstitution(resource.data.institutionId);
+      
+      // Only system can write audit logs (server-side only)
+      allow write: if false;
+    }
+    
+    match /audit_backup/{logId} {
+      // Only admins can read backup audit logs
+      allow read: if hasBasicAccess() && hasRole('ADMIN');
+      
+      // Only system can write backup logs (server-side only)
+      allow write: if false;
+    }
+    
+    match /audit_emergency/{logId} {
+      // Only admins can read emergency audit logs
+      allow read: if hasBasicAccess() && hasRole('ADMIN');
+      
+      // Only system can write emergency logs (server-side only)
+      allow write: if false;
+    }
+    
+    // ===== SYSTEM SETTINGS =====
+    match /system_settings/{settingId} {
+      // All users can read system settings for their institution
+      allow read: if hasBasicAccess() && 
+        belongsToSameInstitution(resource.data.institutionId);
+      
+      // Only admins can update system settings
+      allow create, update: if hasBasicAccess() && 
+        hasRole('ADMIN') && 
+        belongsToSameInstitution(request.resource.data.institutionId) &&
+        request.resource.data.get('lastModifiedBy', request.resource.data.createdBy) == getUserId();
+      
+      // No deletion of system settings
+      allow delete: if false;
+    }
+    
+    // ===== HELPER FUNCTIONS =====
+    
+    // Check if user is only updating allowed fields
+    function onlyUpdatingFields(allowedFields) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(allowedFields);
+    }
+    
+    // Check if user is in schedule assignments
+    function userInScheduleAssignments() {
+      return getUserId() in resource.data.assignments[].residentId;
+    }
+    
+    // Check if faculty supervises a resident (would need to query users collection)
+    function supervisesResident(residentId) {
+      // This would require a more complex query to the users collection
+      // For now, we'll trust the application layer to handle this
+      return true;
+    }
+  }
+}

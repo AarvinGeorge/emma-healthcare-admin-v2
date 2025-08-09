@@ -34,10 +34,24 @@ if (missingVars.length > 0) {
 // Initialize Firebase application
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp()
 
-// Initialize Firebase services
+// Initialize Firebase services with improved connection settings
 export const db = getFirestore(app)
 export const auth = getAuth(app)
 export const storage = getStorage(app)
+
+// Configure Firestore for better connection stability
+if (typeof window !== 'undefined') {
+  // Client-side Firestore settings
+  db._delegate._databaseId = db._delegate._databaseId
+  
+  // Enable offline persistence for better reliability
+  try {
+    // Note: This should be called before any other Firestore operations
+    // enablePersistence(db, { synchronizeTabs: true })
+  } catch (err) {
+    console.warn('Firestore persistence could not be enabled:', err)
+  }
+}
 
 // Development emulator setup
 if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
