@@ -93,6 +93,12 @@ export const logAdminAction = async (
       }
       
       // Re-throw to ensure calling code knows audit failed
+      // In development, log the error but don't block operations
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('[DEV] HIPAA audit logging failed - continuing operation in development mode')
+        return
+      }
+      
       throw new Error('HIPAA audit logging failed - operation may need to be rolled back')
     }
   }

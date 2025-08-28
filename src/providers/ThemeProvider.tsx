@@ -4,7 +4,7 @@
  * EMMA Healthcare Theme Provider
  * 
  * Wraps the application with Material UI ThemeProvider using the
- * EMMA healthcare design system theme.
+ * EMMA healthcare design system theme, plus React Query for data management.
  */
 
 import React from 'react'
@@ -12,6 +12,7 @@ import { ThemeProvider as MUIThemeProvider, CssBaseline } from '@mui/material'
 import { CacheProvider } from '@emotion/react'
 import createCache from '@emotion/cache'
 import { SessionProvider } from 'next-auth/react'
+import ReactQueryProvider from './ReactQueryProvider'
 import { emmaHealthcareTheme } from '../theme/emma-healthcare-theme'
 
 // Create emotion cache for Material UI
@@ -32,12 +33,14 @@ export const EMMAThemeProvider: React.FC<EMMAThemeProviderProps> = ({
 }) => {
   return (
     <SessionProvider>
-      <CacheProvider value={emotionCache}>
-        <MUIThemeProvider theme={emmaHealthcareTheme}>
-          <CssBaseline />
-          {children}
-        </MUIThemeProvider>
-      </CacheProvider>
+      <ReactQueryProvider>
+        <CacheProvider value={emotionCache}>
+          <MUIThemeProvider theme={emmaHealthcareTheme}>
+            <CssBaseline />
+            {children}
+          </MUIThemeProvider>
+        </CacheProvider>
+      </ReactQueryProvider>
     </SessionProvider>
   )
 }

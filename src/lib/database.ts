@@ -281,6 +281,241 @@ export class UserService {
       throw new Error('Failed to retrieve users')
     }
   }
+
+  /**
+   * Get resident physicians by institution with advanced filtering
+   * Filters users with role='RESIDENT' and employment.position='Resident Physician'
+   */
+  static async getResidentPhysicians(
+    institutionId: string,
+    requestedBy: string,
+    options?: {
+      department?: Department
+      pgyLevel?: PGYLevel
+      isActive?: boolean
+      searchTerm?: string
+    }
+  ): Promise<ExtendedUser[]> {
+    try {
+      // Use Admin SDK for server-side operations, Client SDK for client-side
+      const dbInstance = typeof window === 'undefined' ? adminDb : db
+      
+      let q = dbInstance.collection(COLLECTIONS.USERS)
+        .where('institutionId', '==', institutionId)
+        .where('role', '==', 'RESIDENT')
+      
+      if (options?.isActive !== undefined) {
+        q = q.where('isActive', '==', options.isActive)
+      } else {
+        q = q.where('isActive', '==', true) // Default to active only
+      }
+
+      if (options?.department) {
+        q = q.where('department', '==', options.department)
+      }
+
+      if (options?.pgyLevel) {
+        q = q.where('pgyLevel', '==', options.pgyLevel)
+      }
+
+      const querySnapshot = await q.get()
+      let residents: ExtendedUser[] = []
+
+      querySnapshot.forEach((doc) => {
+        const userData = doc.data()
+        
+        // Filter for resident physicians based on employment position
+        const hasResidentPhysicianPosition = userData.employment?.some(
+          (emp: any) => emp.position === 'Resident Physician'
+        )
+        
+        if (hasResidentPhysicianPosition) {
+          residents.push({
+            id: doc.id,
+            ...userData
+          } as ExtendedUser)
+        }
+      })
+
+      // Apply search filter if provided
+      if (options?.searchTerm) {
+        const searchLower = options.searchTerm.toLowerCase()
+        residents = residents.filter(resident =>
+          resident.firstName.toLowerCase().includes(searchLower) ||
+          resident.lastName.toLowerCase().includes(searchLower) ||
+          resident.email.toLowerCase().includes(searchLower) ||
+          resident.medicalLicenseNumber?.toLowerCase().includes(searchLower)
+        )
+      }
+
+      // Sort by last name, first name
+      residents.sort((a, b) => {
+        const lastNameCompare = a.lastName.localeCompare(b.lastName)
+        if (lastNameCompare !== 0) return lastNameCompare
+        return a.firstName.localeCompare(b.firstName)
+      })
+
+      // HIPAA Audit logging
+      await logAdminAction(
+        'RESIDENT_PHYSICIANS_ACCESSED',
+        requestedBy,
+        'RESIDENT_COLLECTION',
+        institutionId,
+        {
+          residentCount: residents.length,
+          filters: {
+            department: options?.department,
+            pgyLevel: options?.pgyLevel,
+            isActive: options?.isActive,
+            hasSearch: !!options?.searchTerm
+          },
+          institutionId
+        }
+      )
+
+      return residents
+    } catch (error) {
+      console.error('[EMMA] Resident physicians fetch failed:', error)
+      throw new Error('Failed to retrieve resident physicians')
+    }
+  }
+
+  /**
+   * Create a new resident physician with proper employment position
+   * Server-side only operation using Firebase Admin SDK
+   */
+  static async createResidentPhysician(
+    residentData: {
+      email: string
+      firstName: string
+      lastName: string
+      department: Department
+      pgyLevel: PGYLevel
+      medicalLicenseNumber?: string
+      supervisingFacultyId?: string
+      phoneNumber?: string
+      institutionId: string
+      profile?: {
+        title?: string
+        middleName?: string
+        preferredName?: string
+      }
+      education?: {
+        medicalSchool: string
+        graduationYear: number
+        undergraduateInstitution?: string
+      }
+    },
+    createdBy: string
+  ): Promise<ExtendedUser> {
+    try {
+      // Validate server-side execution
+      if (typeof window !== 'undefined') {
+        throw new Error('createResidentPhysician must only be called server-side')
+      }
+
+      // Generate user ID
+      const userId = residentData.email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '')
+      
+      // Check if user already exists
+      const existingUserDoc = await adminDb.collection(COLLECTIONS.USERS).doc(userId).get()
+      if (existingUserDoc.exists) {
+        throw new Error('A user with this email already exists')
+      }
+
+      const timestamp = typeof window === 'undefined' ? 
+        (await import('firebase-admin/firestore')).FieldValue.serverTimestamp() :
+        Timestamp.now()
+
+      const newResident: ExtendedUser = {
+        id: userId,
+        email: residentData.email,
+        role: 'RESIDENT',
+        firstName: residentData.firstName,
+        lastName: residentData.lastName,
+        department: residentData.department,
+        pgyLevel: residentData.pgyLevel,
+        status: 'PENDING_VERIFICATION',
+        institutionId: residentData.institutionId,
+        medicalLicenseNumber: residentData.medicalLicenseNumber,
+        supervisingFacultyId: residentData.supervisingFacultyId,
+        isActive: false, // Will be activated when Firebase Auth user is created
+        emailVerified: false,
+        phoneNumber: residentData.phoneNumber,
+        createdBy,
+        lastModifiedBy: createdBy,
+        permissions: ROLE_PERMISSIONS.RESIDENT,
+        createdAt: timestamp as any,
+        updatedAt: timestamp as any,
+        
+        // Extended profile
+        profile: {
+          title: residentData.profile?.title || 'Dr.',
+          middleName: residentData.profile?.middleName,
+          preferredName: residentData.profile?.preferredName || residentData.firstName,
+          bio: '',
+        },
+        
+        // Professional credentials (empty initially)
+        credentials: {
+          boardCertifications: []
+        },
+        
+        // Education information
+        education: residentData.education || {
+          medicalSchool: '',
+          graduationYear: new Date().getFullYear()
+        },
+        
+        // Employment as resident physician - KEY FIELD FOR FILTERING
+        employment: [{
+          startDate: timestamp as any,
+          position: 'Resident Physician',
+          department: residentData.department,
+          supervisor: residentData.supervisingFacultyId,
+          employmentType: 'FULL_TIME'
+        }]
+      }
+
+      // Clean up undefined values for Firestore
+      const cleanedResident = cleanUndefinedValues(newResident)
+
+      // Create user document using Firebase Admin SDK
+      await adminDb.collection(COLLECTIONS.USERS).doc(userId).set(cleanedResident)
+
+      // HIPAA Audit logging
+      await logAdminAction(
+        'RESIDENT_PHYSICIAN_CREATED',
+        createdBy,
+        'USER',
+        userId,
+        {
+          email: residentData.email,
+          role: 'RESIDENT',
+          department: residentData.department,
+          pgyLevel: residentData.pgyLevel,
+          institutionId: residentData.institutionId,
+          position: 'Resident Physician'
+        }
+      )
+
+      return cleanedResident as ExtendedUser
+    } catch (error) {
+      console.error('[EMMA] Resident physician creation failed:', error)
+      
+      if (error instanceof Error) {
+        if (error.message.includes('already exists')) {
+          throw error
+        } else if (error.message.includes('PERMISSION_DENIED')) {
+          throw new Error(`Firestore permission denied: ${error.message}`)
+        } else if (error.message.includes('UNAUTHENTICATED')) {
+          throw new Error(`Firebase Admin SDK authentication failed: ${error.message}`)
+        }
+      }
+      
+      throw new Error('Failed to create resident physician profile')
+    }
+  }
 }
 
 // ===== INSTITUTION MANAGEMENT =====
