@@ -1,413 +1,895 @@
 # EMMA Healthcare Admin Panel V2
 
-# 🚀 LATEST UPDATE - August 27, 2025: Complete Healthcare Dashboard Implementation ✅
-
-**MAJOR RELEASE**: Full-featured healthcare administration dashboard with resident management, analytics, and scheduling capabilities now live!
-
-## 🎯 Dashboard Features Now Available
-- **Complete Dashboard System**: Multi-section healthcare administration interface
-- **Resident Management**: Full CRUD operations with advanced forms and modals
-- **Class Analytics**: Performance tracking and reporting dashboards
-- **Schedule Matching**: Intelligent rotation scheduling and resource allocation
-- **Real-time Data**: React Query integration with healthcare-optimized caching
-- **Enhanced Registration**: Multi-step professional onboarding with role-based validation
-
-### 🏥 Why These Enhancements Were Made
-1. **Operational Readiness**: Transformed from authentication-only to fully functional admin platform
-2. **Healthcare-Specific Workflows**: Built for real medical education administration needs
-3. **Data Management**: React Query ensures reliable, cached data fetching for critical healthcare information
-4. **User Experience**: Intuitive dashboard navigation with role-based access control
-5. **Compliance Ready**: Enhanced registration captures complete professional information for HIPAA requirements
-
----
-
-# 🚨 Previous Update - August 8, 2025: Authentication System Complete ✅
-
-**CRITICAL**: All authentication issues resolved - Login system now fully operational!
-
-## ✅ Authentication System Fixes Complete
-- **Email Verification Toggle**: Configurable requirement with `NEXT_PUBLIC_REQUIRE_EMAIL_VERIFICATION`
-- **Document ID Bug**: Fixed Firestore/Firebase Auth UID mismatch causing login failures
-- **Complete Flow**: Registration → Login → Dashboard access working end-to-end
-- **Test Users**: Ready-to-use credentials for immediate testing
-- **No Firebase Config Required**: Development mode works out of the box
-
-### 🔧 Quick Test Instructions
-**Test User Credentials (Ready to Use):**
-- Email: `fixtest@cmu.edu` | Password: `FixTest@1234`
-- Email: `workingtest@cmu.edu` | Password: `WorkingTest@1234`
-
-**Development Flow:**
-1. `npm run dev`
-2. Navigate to `http://localhost:3000`
-3. Register new user or use test credentials above
-4. Login immediately works (no email verification needed)
-5. Full dashboard access granted
-
-### 🛠️ Email Verification Configuration
-```bash
-# .env.local configuration
-NEXT_PUBLIC_REQUIRE_EMAIL_VERIFICATION="false"  # Default: disabled for development
-NEXT_PUBLIC_REQUIRE_EMAIL_VERIFICATION="true"   # Enable for production with email verification
-```
-
-**Development Mode (Default):**
-- Users can register and login immediately
-- No email verification required
-- Instant dashboard access
-- Perfect for rapid development and testing
-
-**Production Mode:**
-- Requires email verification before login
-- Sends verification emails via Firebase
-- Users must verify email before accessing dashboard
-- HIPAA-compliant email verification workflow
-
-### 🐛 Critical Bug Fixed: Login Failure Resolution
-
-**Issue**: Users could register successfully but failed to login with error "User profile not found in Firestore"
-
-**Root Cause**: Document ID mismatch between registration and login processes
-- Registration: Created Firestore documents with ID = `email.split('@')[0]` (e.g., "testuser")  
-- Login: NextAuth searched for documents with ID = `Firebase Auth UID` (e.g., "BCt7JCef0NQkVGCN0vfdAhDI0WG3")
-
-**Solution**: Updated UserService to use Firebase Auth UID consistently
-- Modified `src/lib/database.ts` to accept optional `userId` parameter
-- Updated `src/app/api/auth/register/route.ts` to pass Firebase Auth UID to UserService
-- Ensured document ID alignment between registration and login processes
-
-**Files Modified:**
-- `src/lib/database.ts` - UserService.createUser() now uses Firebase Auth UID as document ID
-- `src/app/api/auth/register/route.ts` - Passes userId parameter to UserService
-- `src/app/api/auth/[...nextauth]/route.ts` - Login validation updated for new user status logic
-
-### 🔒 Security & HIPAA Compliance Maintained
-- **Two-layer Security**: Admin SDK (server-side) bypasses rules, Client SDK (client-side) enforces rules
-- **HIPAA Audit Logging**: All authentication actions logged securely
-- **Role-based Access**: Admin, Coordinator, Faculty, Resident permissions maintained
-- **Session Security**: Proper timeout and termination handling
-- **Production Ready**: All enterprise security features preserved
-
----
-
-**Status**: ✅ **PRODUCTION READY** - Complete Dashboard System with Full Healthcare Features  
-**Last Updated**: August 27, 2025 at 14:00 EDT  
-**Dashboard**: ✅ **FULLY IMPLEMENTED** - Complete admin interface with resident management, analytics, and scheduling  
-**Authentication**: ✅ **FULLY OPERATIONAL** - Registration, Login, and Dashboard access working  
-**TypeScript Migration**: ✅ **COMPLETE** - Full frontend TypeScript conversion with industry standards  
-**HIPAA Compliance**: ✅ **SECURED** - All audit logging violations resolved  
-**Development Safety**: ✅ **ENHANCED** - DOM prop leakage fixed, NextAuth development fallbacks added
-
 A TypeScript-first healthcare administration platform built with Material UI 5 and React Query, featuring a comprehensive dashboard system, medical-grade design systems, HIPAA-compliant authentication, resident management, analytics, scheduling, and type-safe component architecture for medical education and residency management.
 
-## 🔧 Technical Implementation Details - Authentication System
+## 📑 Table of Contents
+- [Quick Start Guide](#-quick-start-guide)
+- [Prerequisites](#-prerequisites)
+- [Installation](#-installation)
+- [Firebase Setup](#-firebase-setup)
+- [Environment Configuration](#-environment-configuration)
+- [Database Setup](#-database-setup)
+- [Running the Application](#-running-the-application)
+- [Testing](#-testing)
+- [Project Structure](#-project-structure)
+- [Development Workflow](#-development-workflow)
+- [Troubleshooting](#-troubleshooting)
+- [Latest Updates](#-latest-updates)
+- [Technology Stack](#-technology-stack)
+- [Contributing](#-contributing)
 
-### Email Verification Toggle Architecture
+---
 
-**Environment Configuration**
+## 🚀 Quick Start Guide
+
+Follow these steps to get the EMMA Healthcare Admin Panel running on your local machine:
+
+### Step 1: Clone and Install
 ```bash
-# Development mode (default) - immediate access
+# Clone the repository
+git clone <repository-url>
+cd emma-admin-v2
+
+# Install dependencies
+npm install
+```
+
+### Step 2: Environment Setup
+```bash
+# Copy environment template
+cp .env.example .env.local
+
+# Edit .env.local with your Firebase credentials
+# See Environment Configuration section for details
+```
+
+### Step 3: Start Development
+```bash
+# Start the development server
+npm run dev
+
+# Open http://localhost:3000 in your browser
+```
+
+### Step 4: Test Login
+Use these test credentials to verify setup:
+- **Email**: `fixtest@cmu.edu`
+- **Password**: `FixTest@1234`
+
+---
+
+## 📋 Prerequisites
+
+Before setting up the project, ensure you have the following installed:
+
+### Required Software
+- **Node.js**: Version 18.17.0 or higher
+  ```bash
+  # Check your Node.js version
+  node --version
+  
+  # Install Node.js via nvm (recommended)
+  nvm install 18.17.0
+  nvm use 18.17.0
+  ```
+
+- **npm**: Version 9.0.0 or higher (comes with Node.js)
+  ```bash
+  # Check npm version
+  npm --version
+  
+  # Update npm if needed
+  npm install -g npm@latest
+  ```
+
+- **Git**: Latest version
+  ```bash
+  # Check Git version
+  git --version
+  ```
+
+### Optional but Recommended
+- **Firebase CLI**: For managing Firebase services
+  ```bash
+  # Install Firebase CLI globally
+  npm install -g firebase-tools
+  
+  # Login to Firebase
+  firebase login
+  ```
+
+- **Visual Studio Code**: With these extensions:
+  - ESLint
+  - Prettier
+  - TypeScript and JavaScript Language Features
+  - Material Icon Theme
+
+### System Requirements
+- **OS**: macOS, Windows 10/11, or Linux (Ubuntu 20.04+)
+- **RAM**: Minimum 8GB (16GB recommended for development)
+- **Storage**: At least 2GB free space
+
+---
+
+## 📦 Installation
+
+### 1. Clone the Repository
+```bash
+git clone <repository-url>
+cd emma-admin-v2
+```
+
+### 2. Install Dependencies
+```bash
+# Using npm (recommended)
+npm install
+
+# Or using yarn
+yarn install
+```
+
+### 3. Verify Installation
+```bash
+# Check if all dependencies are installed
+npm list --depth=0
+
+# Run type checking to verify TypeScript setup
+npm run check:types
+```
+
+---
+
+## 🔥 Firebase Setup
+
+This project requires a Firebase project with specific services enabled. Follow these steps to set up Firebase:
+
+### Step 1: Create a Firebase Project
+
+1. Go to [Firebase Console](https://console.firebase.google.com/)
+2. Click "Create a project" or "Add project"
+3. Enter project name (e.g., "emma-healthcare-admin")
+4. Disable Google Analytics (optional for development)
+5. Click "Create project"
+
+### Step 2: Enable Required Services
+
+#### Authentication
+1. In Firebase Console, go to **Authentication** → **Get started**
+2. Enable the following sign-in methods:
+   - **Email/Password**: Toggle on and save
+   - **Google** (optional): Configure with your OAuth consent screen
+3. Go to **Authentication** → **Settings** → **User actions**
+4. Enable "Email enumeration protection" for security
+
+#### Firestore Database
+1. Go to **Firestore Database** → **Create database**
+2. Choose "Start in production mode" for security
+3. Select your preferred location (e.g., us-central1)
+4. Click "Enable"
+
+#### Storage (Optional for file uploads)
+1. Go to **Storage** → **Get started**
+2. Start in production mode
+3. Choose the same location as Firestore
+4. Click "Done"
+
+### Step 3: Generate Firebase Configuration
+
+#### Client Configuration (for frontend)
+1. Go to **Project settings** → **General**
+2. Scroll to "Your apps" → Click "Web" icon (</\>)
+3. Register app with a nickname (e.g., "EMMA Admin Panel")
+4. Copy the Firebase configuration object:
+```javascript
+const firebaseConfig = {
+  apiKey: "...",
+  authDomain: "...",
+  projectId: "...",
+  storageBucket: "...",
+  messagingSenderId: "...",
+  appId: "..."
+};
+```
+
+#### Admin SDK Configuration (for backend)
+1. Go to **Project settings** → **Service accounts**
+2. Click "Generate new private key"
+3. Save the downloaded JSON file securely
+4. Extract these values from the JSON:
+   - `project_id` → FIREBASE_PROJECT_ID
+   - `client_email` → FIREBASE_CLIENT_EMAIL
+   - `private_key` → FIREBASE_PRIVATE_KEY
+
+### Step 4: Deploy Security Rules
+
+Create a file `firestore.rules` in your project root:
+```javascript
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allow authenticated users to read their own data
+    match /users/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if false; // Only admin SDK can write
+    }
+    
+    // Protect audit logs
+    match /hipaa_audit_logs/{document=**} {
+      allow read: if false;
+      allow write: if false; // Only admin SDK
+    }
+    
+    // Add more rules as needed
+  }
+}
+```
+
+Deploy the rules:
+```bash
+firebase deploy --only firestore:rules
+```
+
+---
+
+## ⚙️ Environment Configuration
+
+### Step 1: Create Environment File
+```bash
+# Copy the template
+cp .env.example .env.local
+```
+
+### Step 2: Configure Required Variables
+
+Edit `.env.local` with your actual values:
+
+#### Firebase Client Configuration (Public)
+```bash
+# These are safe for client-side and can be exposed
+NEXT_PUBLIC_FIREBASE_API_KEY="your-api-key-from-firebase-config"
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN="your-project.firebaseapp.com"
+NEXT_PUBLIC_FIREBASE_PROJECT_ID="your-project-id"
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET="your-project.appspot.com"
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID="123456789"
+NEXT_PUBLIC_FIREBASE_APP_ID="1:123456789:web:abcdef"
+```
+
+#### Firebase Admin Configuration (Private - NEVER expose)
+```bash
+# Extract these from the service account JSON
+FIREBASE_PROJECT_ID="your-project-id"
+FIREBASE_CLIENT_EMAIL="firebase-adminsdk-xxxxx@your-project.iam.gserviceaccount.com"
+
+# For the private key, preserve the \n characters
+FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBg...\n-----END PRIVATE KEY-----\n"
+```
+
+#### NextAuth Configuration
+```bash
+# Generate a secure secret (32+ characters)
+NEXTAUTH_SECRET="$(openssl rand -base64 32)"
+
+# Set your application URL
+NEXTAUTH_URL="http://localhost:3000"  # Development
+# NEXTAUTH_URL="https://your-domain.com"  # Production
+```
+
+#### Application Settings
+```bash
+# Development Settings
+NODE_ENV="development"
+NEXT_PUBLIC_APP_URL="http://localhost:3000"
+
+# Email Verification (set to false for easier development)
 NEXT_PUBLIC_REQUIRE_EMAIL_VERIFICATION="false"
 
-# Production mode - email verification required
-NEXT_PUBLIC_REQUIRE_EMAIL_VERIFICATION="true"
+# HIPAA Compliance
+NEXT_PUBLIC_ENABLE_HIPAA_AUDIT="true"
 ```
 
-**Backend Implementation (`src/app/api/auth/register/route.ts`)**
-```typescript
-// Conditional user status based on email verification requirement
-const requireEmailVerification = process.env.NEXT_PUBLIC_REQUIRE_EMAIL_VERIFICATION === 'true'
+### Step 3: Validate Configuration
+```bash
+# Check if environment variables are loaded
+npm run dev
 
-const userData = {
-  // User status: ACTIVE immediately if verification disabled, PENDING_VERIFICATION if enabled
-  status: requireEmailVerification ? 'PENDING_VERIFICATION' : 'ACTIVE',
-  
-  // User active state: true immediately if verification disabled
-  isActive: !requireEmailVerification,
-  
-  // Email verified flag: true immediately if verification disabled
-  emailVerified: !requireEmailVerification,
+# Look for any Firebase initialization errors in the console
+```
+
+---
+
+## 🗄️ Database Setup
+
+### Initial Database Structure
+
+The application will automatically create collections as needed, but you can set up initial structure:
+
+### Step 1: Initialize Collections
+
+Run the database initialization script:
+```bash
+npm run db:seed
+```
+
+This will create:
+- `users` collection with test users
+- `institutions` collection with sample institutions
+- `system_settings` with default configuration
+- Required indexes for performance
+
+### Step 2: Create Admin User (Manual)
+
+If the seed script doesn't work, manually create an admin user:
+
+1. Register a new user through the UI
+2. Go to Firebase Console → Firestore
+3. Find the user document in the `users` collection
+4. Update the following fields:
+```json
+{
+  "role": "ADMIN",
+  "status": "ACTIVE",
+  "isActive": true,
+  "emailVerified": true,
+  "permissions": {
+    "canViewAllUsers": true,
+    "canCreateUsers": true,
+    "canEditUsers": true,
+    "canDeleteUsers": true,
+    "canManageSystem": true
+  }
+}
+```
+
+### Step 3: Verify Database Setup
+```bash
+# Check collections in Firebase Console
+# Firestore Database → Data tab
+
+# Required collections:
+- users
+- institutions
+- hipaa_audit_logs
+- audit_backup
+- audit_emergency
+```
+
+---
+
+## ▶️ Running the Application
+
+### Development Mode
+```bash
+# Start with hot reload and Turbopack
+npm run dev
+
+# Start with HIPAA audit logging enabled
+npm run dev:secure
+
+# Access the application
+# Open: http://localhost:3000
+```
+
+### Production Build
+```bash
+# Create optimized production build
+npm run build
+
+# Start production server
+npm run start
+
+# Or build and start
+npm run build && npm run start
+```
+
+### Using Different Ports
+```bash
+# If port 3000 is in use
+PORT=3001 npm run dev
+
+# Kill processes on blocked ports
+npm run kill
+```
+
+### Verify Setup
+After starting the application:
+1. Navigate to http://localhost:3000
+2. You should see the EMMA login page
+3. Try logging in with test credentials
+4. Check browser console for any errors
+
+---
+
+## 🧪 Testing
+
+### Unit Tests
+```bash
+# Run all unit tests
+npm run test
+
+# Run tests in watch mode
+npm run test:watch
+
+# Run tests with coverage
+npm run test -- --coverage
+```
+
+### End-to-End Tests
+```bash
+# Install Playwright browsers (first time only)
+npx playwright install
+
+# Run E2E tests
+npm run test:e2e
+
+# Run E2E tests with UI
+npm run test:e2e:headed
+
+# Run specific test file
+npx playwright test tests/auth.spec.ts
+```
+
+### Type Checking
+```bash
+# Check TypeScript types
+npm run check:types
+
+# Check types and run security audit
+npm run security:audit
+```
+
+### Code Quality
+```bash
+# Run ESLint
+npm run lint
+
+# Check code formatting
+npm run format:check
+
+# Auto-fix formatting issues
+npm run format
+```
+
+### Testing with Firebase Emulators
+```bash
+# Install Firebase CLI if not already installed
+npm install -g firebase-tools
+
+# Start Firebase emulators
+firebase emulators:start
+
+# In another terminal, run the app with emulator config
+NEXT_PUBLIC_USE_FIREBASE_EMULATORS=true npm run dev
+```
+
+---
+
+## 🛠️ Troubleshooting
+
+### Common Setup Issues
+
+#### Issue: "Module not found" errors
+**Solution:**
+```bash
+# Clear node_modules and reinstall
+rm -rf node_modules package-lock.json
+npm install
+
+# Clear Next.js cache
+rm -rf .next
+npm run dev
+```
+
+#### Issue: "Firebase app not initialized"
+**Cause:** Missing or incorrect Firebase configuration
+**Solution:**
+1. Verify all Firebase environment variables are set in `.env.local`
+2. Check that Firebase project ID matches in both client and admin configs
+3. Ensure private key formatting is preserved with `\n` characters
+
+#### Issue: "Port 3000 is already in use"
+**Solution:**
+```bash
+# Option 1: Kill the process
+npm run kill
+
+# Option 2: Use a different port
+PORT=3001 npm run dev
+
+# Option 3: Find and kill specific process
+lsof -i:3000
+kill -9 <PID>
+```
+
+#### Issue: "User profile not found in Firestore" during login
+**Cause:** User document ID mismatch
+**Solution:**
+- Register a new user (existing users from before the fix won't work)
+- Or manually update the document ID in Firestore to match Firebase Auth UID
+
+#### Issue: "Account is inactive or suspended"
+**Cause:** Email verification required but not completed
+**Solution:**
+```bash
+# For development, disable email verification
+NEXT_PUBLIC_REQUIRE_EMAIL_VERIFICATION="false"
+
+# Or verify email through Firebase Console
+# Authentication → Users → Edit user → Mark as verified
+```
+
+#### Issue: TypeScript errors in IDE
+**Solution:**
+```bash
+# Restart TypeScript server in VS Code
+# Cmd/Ctrl + Shift + P → "TypeScript: Restart TS Server"
+
+# Or manually check types
+npm run check:types
+```
+
+#### Issue: "Cannot find module '@/components/...'"
+**Cause:** Path alias configuration issue
+**Solution:**
+1. Verify `tsconfig.json` has correct path mappings
+2. Restart your IDE
+3. Clear TypeScript cache
+
+#### Issue: Build fails with memory errors
+**Solution:**
+```bash
+# Increase Node.js memory limit
+NODE_OPTIONS="--max-old-space-size=4096" npm run build
+```
+
+#### Issue: Firebase Admin SDK authentication fails
+**Cause:** Incorrect service account credentials
+**Solution:**
+1. Regenerate service account key from Firebase Console
+2. Ensure `FIREBASE_PRIVATE_KEY` preserves all `\n` characters
+3. Verify `FIREBASE_CLIENT_EMAIL` matches the service account
+
+#### Issue: CORS errors when accessing Firebase
+**Solution:**
+1. Check `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` is correct
+2. Add your domain to Firebase Authentication authorized domains
+3. Ensure Firebase project settings allow your localhost
+
+### Performance Issues
+
+#### Slow initial page load
+- Enable Turbopack: `npm run dev` (already configured)
+- Check for large bundle sizes: `npm run build` and review output
+- Implement code splitting for large components
+
+#### High memory usage during development
+```bash
+# Clear Next.js cache
+rm -rf .next
+
+# Limit concurrent builds
+npm run dev -- --experimental-worker-threads=2
+```
+
+### Database Issues
+
+#### Firestore permission denied
+1. Check Firebase Authentication status
+2. Review Firestore security rules
+3. Ensure user role has required permissions
+4. Use Firebase Admin SDK for server-side operations
+
+#### Missing collections or data
+```bash
+# Run database seed script
+npm run db:seed
+
+# Or manually create collections in Firebase Console
+```
+
+### Getting Help
+
+If you encounter issues not covered here:
+
+1. Check the browser console for detailed error messages
+2. Review server logs in the terminal
+3. Search existing issues in the project repository
+4. Check Firebase Console for service status
+5. Review the `ARCHITECTURE-2025-08-09.md` file for system details
+
+---
+
+## 📁 Project Structure
+
+Understanding the project structure helps you navigate and contribute effectively:
+
+```
+emma-admin-v2/
+├── src/                          # Source code directory
+│   ├── app/                      # Next.js App Router pages and API routes
+│   │   ├── api/                  # Backend API endpoints
+│   │   │   ├── auth/            # Authentication endpoints
+│   │   │   │   ├── [...nextauth]/ # NextAuth configuration
+│   │   │   │   └── register/    # User registration
+│   │   │   └── residents/       # Resident management APIs
+│   │   ├── auth/                # Authentication pages
+│   │   │   └── action/          # Email verification handler
+│   │   ├── dashboard/           # Main dashboard page
+│   │   ├── layout.tsx           # Root layout with providers
+│   │   ├── page.tsx             # Home/login page
+│   │   └── globals.css          # Global styles
+│   │
+│   ├── components/              # React components
+│   │   ├── emma/               # EMMA design system components
+│   │   │   ├── EMMAButton/     # Healthcare button component
+│   │   │   ├── EMMACard/       # Medical data card
+│   │   │   ├── EMMAInput/      # Healthcare form input
+│   │   │   ├── EMMALoginForm/  # Login interface
+│   │   │   └── EMMARegistrationForm/ # Registration flow
+│   │   ├── dashboard/          # Dashboard-specific components
+│   │   ├── forms/              # Reusable form components
+│   │   ├── layout/             # Layout components
+│   │   └── modals/             # Modal dialogs
+│   │
+│   ├── lib/                    # Utility libraries and services
+│   │   ├── firebase.ts         # Firebase client configuration
+│   │   ├── firebase-admin.ts  # Firebase Admin SDK setup
+│   │   ├── database.ts         # Database service layer
+│   │   └── database-init.ts   # Database initialization
+│   │
+│   ├── providers/              # React context providers
+│   │   ├── ThemeProvider.tsx  # Material UI theme provider
+│   │   └── ReactQueryProvider.tsx # React Query setup
+│   │
+│   ├── theme/                  # Theme configuration
+│   │   └── emma-healthcare-theme.ts # Healthcare-specific theme
+│   │
+│   ├── types/                  # TypeScript type definitions
+│   │   ├── emma.ts            # Component type definitions
+│   │   ├── user.ts            # User and auth types
+│   │   ├── database.ts        # Database schema types
+│   │   └── next-auth.d.ts     # NextAuth type extensions
+│   │
+│   └── hooks/                  # Custom React hooks
+│       └── (custom hooks)
+│
+├── public/                     # Static assets
+│   ├── images/                # Image files
+│   └── icons/                 # Icon files
+│
+├── scripts/                    # Utility scripts
+│   ├── kill-servers.sh        # Port cleanup script
+│   └── seed-database.js      # Database seeding script
+│
+├── tests/                      # Test files
+│   ├── unit/                  # Unit tests
+│   └── e2e/                   # End-to-end tests
+│
+├── Configuration Files
+│   ├── .env.example           # Environment template
+│   ├── .env.local             # Local environment (not in git)
+│   ├── .eslintrc.json         # ESLint configuration
+│   ├── .gitignore             # Git ignore rules
+│   ├── .prettierrc            # Prettier configuration
+│   ├── next.config.mjs        # Next.js configuration
+│   ├── package.json           # Dependencies and scripts
+│   ├── tsconfig.json          # TypeScript configuration
+│   ├── vitest.config.ts       # Vitest test configuration
+│   └── playwright.config.ts   # Playwright E2E configuration
+│
+└── Documentation
+    ├── README.md              # This file
+    ├── CLAUDE.md             # Development standards
+    ├── CLAUDE.local.md       # Local dev instructions
+    └── ARCHITECTURE-2025-08-09.md # System architecture
+
+```
+
+### Key Directories Explained
+
+#### `/src/app`
+Next.js App Router directory containing all pages and API routes. Each folder represents a route segment.
+
+#### `/src/components/emma`
+Healthcare-specific component library with Material UI integration. All components are TypeScript-first with proper prop filtering.
+
+#### `/src/lib`
+Core services and utilities:
+- `firebase.ts`: Client-side Firebase SDK initialization
+- `firebase-admin.ts`: Server-side Admin SDK with HIPAA logging
+- `database.ts`: Database abstraction layer with UserService
+
+#### `/src/types`
+TypeScript definitions for type safety across the application:
+- Healthcare-specific types (PGY levels, departments, roles)
+- Component prop interfaces
+- Database schema types
+
+---
+
+## 🔄 Development Workflow
+
+### Starting a New Feature
+
+1. **Create a feature branch**
+```bash
+git checkout -b feature/your-feature-name
+```
+
+2. **Review existing patterns**
+- Check similar components in `/src/components`
+- Review type definitions in `/src/types`
+- Follow established Material UI patterns
+
+3. **Implement with TypeScript**
+```typescript
+// Always use TypeScript for new files
+// Example: src/components/YourComponent.tsx
+import { FC } from 'react'
+import { Box, Typography } from '@mui/material'
+
+interface YourComponentProps {
+  title: string
+  // Add proper TypeScript interfaces
 }
 
-// Conditional email sending
-if (requireEmailVerification) {
-  await sendEmailVerification(firebaseUser)
+export const YourComponent: FC<YourComponentProps> = ({ title }) => {
+  return (
+    <Box>
+      <Typography>{title}</Typography>
+    </Box>
+  )
 }
 ```
 
-**NextAuth Integration (`src/app/api/auth/[...nextauth]/route.ts`)**
-```typescript
-// Allow different user statuses based on verification requirement
-const requireEmailVerification = process.env.NEXT_PUBLIC_REQUIRE_EMAIL_VERIFICATION === 'true'
-const allowedStatuses = requireEmailVerification ? ['ACTIVE'] : ['ACTIVE', 'PENDING_VERIFICATION']
+4. **Test your changes**
+```bash
+# Type checking
+npm run check:types
 
-// Flexible login validation
-if (!userData.isActive && requireEmailVerification) {
-  throw new Error('Account is inactive. Please verify your email address.')
-}
+# Run tests
+npm run test
 
-if (!allowedStatuses.includes(userData.status)) {
-  throw new Error('Account is inactive or suspended')
-}
+# Check formatting
+npm run format:check
 ```
 
-### Document ID Alignment Fix
-
-**Problem Analysis**
-```typescript
-// BEFORE (Broken): Registration vs Login ID mismatch
-// Registration: UserService.createUser() used email-based ID
-const userId = userData.email.split('@')[0] // "testuser"
-
-// Login: NextAuth looked for Firebase Auth UID 
-const userDoc = await adminDb.collection('users').doc(userCredential.user.uid).get() // "BCt7JCef0NQkVGCN0vfdAhDI0WG3"
+5. **Commit with conventional commits**
+```bash
+git add .
+git commit -m "feat: add new healthcare component"
+# Use: feat, fix, docs, style, refactor, test, chore
 ```
 
-**Solution Implementation**
+### Adding a New API Endpoint
+
+1. Create the route file in `/src/app/api/your-endpoint/route.ts`
+2. Implement with proper error handling:
 ```typescript
-// AFTER (Fixed): Consistent Firebase Auth UID usage
-// UserService updated to accept Firebase Auth UID
-static async createUser(
-  userData: Omit<ExtendedUser, 'id' | 'createdAt' | 'updatedAt'>,
-  createdBy: string,
-  userId?: string  // NEW: Firebase Auth UID parameter
-): Promise<ExtendedUser>
-
-// Use Firebase Auth UID as document ID
-const docId = userId || userData.email.split('@')[0] // Prioritize Firebase Auth UID
-await adminDb.collection(COLLECTIONS.USERS).doc(docId).set(cleanedUser)
-
-// Registration API passes Firebase Auth UID
-const createdUser = await UserService.createUser(userData, 'SYSTEM', userId)
-```
-
-### HIPAA Compliance Architecture
-
-**Two-Layer Security Model**
-```typescript
-// Server-side: Admin SDK bypasses Firestore security rules
+import { NextRequest, NextResponse } from 'next/server'
 import { adminDb, logAdminAction } from '@/lib/firebase-admin'
 
-// Create user with admin privileges (registration)
-await adminDb.collection('users').doc(userId).set(userData)
-
-// Client-side: Regular SDK enforces Firestore security rules
-import { db } from '@/lib/firebase'
-
-// Regular user operations follow security rules
-const userDoc = await getDoc(doc(db, 'users', userId))
-```
-
-**Audit Logging System**
-```typescript
-// All authentication actions are HIPAA-logged
-await logAdminAction(
-  'USER_REGISTRATION_SUCCESS',
-  userId,
-  'USER',
-  userId,
-  {
-    email: userData.email,
-    role: userData.role,
-    department: userData.department,
-    institutionId: userData.institutionId,
-    ipAddress: clientIP,
-    userAgent: request.headers.get('user-agent'),
-    registrationMethod: 'WEB_FORM'
+export async function GET(request: NextRequest) {
+  try {
+    // Your logic here
+    
+    // Log for HIPAA compliance
+    await logAdminAction('ACTION_NAME', userId, 'RESOURCE_TYPE', resourceId)
+    
+    return NextResponse.json({ data })
+  } catch (error) {
+    console.error('Error:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
   }
-)
-```
-
-### Development vs Production Modes
-
-**Development Mode (Email Verification Disabled)**
-- ✅ Immediate user registration and login
-- ✅ No email configuration required
-- ✅ Instant dashboard access for testing
-- ✅ All security features maintained for data integrity
-
-**Production Mode (Email Verification Enabled)**  
-- ✅ Firebase Console email template configuration required
-- ✅ Users receive verification emails
-- ✅ Login blocked until email verified
-- ✅ HIPAA-compliant email verification workflow
-
-### Firebase Console Configuration (Production Only)
-
-When `NEXT_PUBLIC_REQUIRE_EMAIL_VERIFICATION="true"`:
-
-1. **Authentication Settings**
-   - Navigate to Firebase Console → Authentication → Templates
-   - Configure "Email address verification" template
-   - Set action URL to: `https://yourdomain.com/auth/action`
-
-2. **Email Verification Handler** (`/auth/action`)
-   - Processes `mode=verifyEmail` action codes
-   - Updates user status from `PENDING_VERIFICATION` to `ACTIVE`  
-   - Enables dashboard access after verification
-
-## 🛠️ Troubleshooting Guide
-
-### Common Authentication Issues
-
-**Issue**: "User profile not found in Firestore" during login
-- **Cause**: User was created before the document ID fix
-- **Solution**: Register a new user - they will work immediately
-- **Prevention**: All new users use proper Firebase Auth UID alignment
-
-**Issue**: "Account is inactive or suspended" during login  
-- **Cause**: Email verification enabled but user hasn't verified email
-- **Solution**: Check email for verification link OR disable verification in `.env.local`
-- **Quick Fix**: Set `NEXT_PUBLIC_REQUIRE_EMAIL_VERIFICATION="false"` and restart server
-
-**Issue**: Email verification not working
-- **Cause**: Firebase Console email templates not configured
-- **Solution**: Configure email templates in Firebase Console Authentication section
-- **Development**: Disable email verification for immediate testing
-
-**Issue**: Cannot access dashboard after login
-- **Cause**: Session not properly established or user permissions issue
-- **Solution**: Clear browser cookies and try logging in again
-- **Debug**: Check browser dev tools for NextAuth session data
-
-### Environment Configuration Checklist
-
-**Minimum Required (Development):**
-```bash
-NEXT_PUBLIC_REQUIRE_EMAIL_VERIFICATION="false"
-FIREBASE_PROJECT_ID="your-project-id"
-FIREBASE_CLIENT_EMAIL="your-admin-sdk-email"
-FIREBASE_PRIVATE_KEY="your-private-key"
-NEXTAUTH_SECRET="your-nextauth-secret"
-```
-
-**Full Configuration (Production):**
-```bash
-NEXT_PUBLIC_REQUIRE_EMAIL_VERIFICATION="true"
-# All Firebase client config (NEXT_PUBLIC_FIREBASE_*)
-# All Firebase admin config
-# NextAuth configuration
-```
-
-### Quick Development Setup
-
-1. **Clone and Install**
-   ```bash
-   git clone <repo>
-   cd emma-admin-v2
-   npm install
-   ```
-
-2. **Environment Setup** 
-   ```bash
-   cp .env.example .env.local
-   # Add your Firebase credentials
-   ```
-
-3. **Start Development**
-   ```bash
-   npm run dev
-   ```
-
-4. **Test Immediately**
-   - Use test credentials: `fixtest@cmu.edu` / `FixTest@1234`
-   - Or register new user for instant access
-
-## 🚨 CRITICAL FIXES COMPLETED
-
-### ✅ HIPAA Compliance Violations RESOLVED
-- **Fixed**: console.log() exposure of audit data in `firebase-admin.ts`
-- **Fixed**: Session data logging in `nextauth.ts`  
-- **Implemented**: Encrypted audit log storage with error recovery
-- **Added**: Emergency backup systems for audit failures
-
-### ✅ React DOM Prop Leakage RESOLVED *(July 21, 2025)*
-- **Fixed**: `emmaVariant` and `emmaSize` prop warnings in React console
-- **Implemented**: `shouldForwardProp` pattern for all styled components  
-- **Result**: Zero React development warnings, clean console output
-- **Pattern**: Industry-standard Material UI 5 + TypeScript prop filtering
-
-### ✅ Development Safety Enhancements *(July 21, 2025)*
-- **NextAuth Fallbacks**: Mock authentication for development environments
-- **Firebase Safety**: Graceful degradation when credentials missing  
-- **Error Handling**: Try-catch blocks around all Firebase Admin operations
-- **Production Ready**: All security features maintained when properly configured
-
-### ✅ Architecture Modernization COMPLETE
-- **Migrated**: Pages Router → App Router for NextAuth
-- **Removed**: Tailwind CSS v4 competing design system
-- **Implemented**: Pure Material UI 5 design system
-- **Created**: EMMA Healthcare component library
-- **TypeScript Migration**: Complete frontend TypeScript conversion *(July 21, 2025)*
-
-### ✅ Design System Migration SUCCESS
-- **Before**: Competing Tailwind + Material Dashboard systems
-- **After**: Unified Material UI 5 healthcare design system
-- **Result**: Consistent, maintainable, medical-grade UI
-
-## 🎯 TYPESCRIPT MIGRATION COMPLETE - July 21, 2025
-
-### ✅ Full Frontend TypeScript Conversion
-- **Migrated All Components**: EMMAButton, EMMAInput, EMMACard, EMMALoginForm → `.tsx`
-- **Theme System**: `emma-healthcare-theme.js` → `.ts` with Material UI 5 type extensions
-- **Type Definitions**: Comprehensive interfaces for all healthcare-specific props
-- **Industry Standards**: Proper React.FC, Material UI 5 TypeScript patterns
-- **Type Safety**: Full IntelliSense support for all medical data structures
-
-### ✅ Critical DOM Prop Issues RESOLVED  
-- **Fixed React Warnings**: `emmaVariant` and `emmaSize` prop leakage to DOM elements
-- **Implemented shouldForwardProp**: Proper Material UI 5 styled component patterns
-- **Zero Console Errors**: Clean React development experience
-- **Component Integrity**: All healthcare functionality preserved with type safety
-
-### ✅ Development Safety Enhancements
-- **NextAuth Fallbacks**: Development-safe authentication when Firebase not configured
-- **Mock Authentication**: Working login system for development environments  
-- **Error Handling**: Graceful degradation for missing environment variables
-- **Production Ready**: Maintains all security features when properly configured
-
-### 🔧 TypeScript Architecture Benefits
-```typescript
-// Type-safe component usage with full IntelliSense
-<EMMAButton 
-  emmaVariant="medical-primary"  // Autocomplete: medical-primary | medical-success | etc.
-  emmaSize="large"               // Autocomplete: small | medium | large
-  pgyLevel={3}                   // Type: 1 | 2 | 3 | 4 | 5 | 6 | 7
-  loading={false}                // Type: boolean
->
-  Submit Evaluation
-</EMMAButton>
-
-// Healthcare-specific type definitions
-interface LoginFormData {
-  email: string;
-  password: string;
-  rememberMe: boolean;
 }
-
-// Material UI 5 theme extensions with TypeScript
-const theme = useTheme();
-const pgyColor: string = theme.palette.getPGYColor(3); // Type-safe healthcare colors
 ```
 
-## 🏥 Current Implementation Status
+### Working with the Database
 
-### ✅ WORKING FEATURES
-- **Complete Dashboard System**: Multi-section healthcare administration interface
-  - Dashboard Overview with real-time metrics and activity feeds
-  - Resident Management with full CRUD operations
-  - Class Analytics for performance tracking
-  - Schedule Matching for rotation planning
-- **Healthcare Login & Registration**: Professional medical authentication UI
-  - Multi-step registration with professional validation
-  - Email verification action handler
-  - Role-based field requirements
-- **HIPAA-Compliant Audit Logging**: Encrypted, tamper-proof storage
-- **Material UI Theme**: Healthcare-optimized colors and typography
-- **Component Library**: EMMAButton, EMMAInput, EMMACard, EMMALoginForm, EMMARegistrationForm
-- **NextAuth Integration**: Role-based healthcare authentication
-- **TypeScript Support**: Full type safety for medical data
-- **React Query Integration**: Healthcare-optimized data fetching and caching
+1. **Define types** in `/src/types/database.ts`
+2. **Create service methods** in `/src/lib/database.ts`
+3. **Use React Query** for data fetching:
+```typescript
+import { useQuery } from '@tanstack/react-query'
+
+const { data, isLoading, error } = useQuery({
+  queryKey: ['residents'],
+  queryFn: fetchResidents,
+})
+```
+
+### Style Guidelines
+
+1. **Use Material UI components** - Don't add custom CSS unless necessary
+2. **Follow the EMMA theme** - Use theme colors and spacing
+3. **Maintain consistency** - Match existing component patterns
+4. **Accessibility first** - Ensure WCAG AA compliance
+
+### Pre-commit Checklist
+
+Before committing your changes:
+
+- [ ] TypeScript compiles without errors: `npm run check:types`
+- [ ] ESLint passes: `npm run lint`
+- [ ] Tests pass: `npm run test`
+- [ ] Code is formatted: `npm run format`
+- [ ] No sensitive data in code or logs
+- [ ] HIPAA compliance maintained
+- [ ] Documentation updated if needed
+
+### Debugging Tips
+
+1. **Enable debug mode**
+```bash
+DEBUG=* npm run dev
+```
+
+2. **Check React Query DevTools**
+- DevTools are included in development
+- Press the React Query logo in bottom corner
+
+3. **Firebase Emulator for testing**
+```bash
+firebase emulators:start
+NEXT_PUBLIC_USE_FIREBASE_EMULATORS=true npm run dev
+```
+
+4. **Browser DevTools**
+- Check Network tab for API calls
+- Console for errors and warnings
+- React DevTools for component state
+
+---
+
+## 🚨 Latest Updates
+
+### August 27, 2025: Complete Healthcare Dashboard Implementation ✅
+- **Dashboard System**: Multi-section healthcare administration interface
+- **Resident Management**: Full CRUD operations with advanced forms
+- **Class Analytics**: Performance tracking and reporting
+- **Schedule Matching**: Intelligent rotation scheduling
+- **Real-time Data**: React Query integration with optimized caching
+
+### August 8, 2025: Authentication System Complete ✅
+- **Email Verification Toggle**: Configurable with `NEXT_PUBLIC_REQUIRE_EMAIL_VERIFICATION`
+- **Document ID Bug Fixed**: Resolved Firestore/Firebase Auth UID mismatch
+- **Complete Auth Flow**: Registration → Login → Dashboard working end-to-end
+- **Test Users Available**: Ready-to-use credentials for immediate testing
+
+### July 21, 2025: TypeScript Migration Complete ✅
+- **Full TypeScript Conversion**: All frontend components migrated
+- **Type Safety**: Healthcare-specific interfaces and validation
+- **Zero DOM Warnings**: Fixed prop leakage with `shouldForwardProp`
+- **Development Safety**: Mock authentication for easier development
+
+
+## 🛠️ Technology Stack
+
+### Frontend
+- **Next.js 15.4.1** - React framework with App Router
+- **React 19.1.0** - UI library
+- **TypeScript 5+** - Type-safe development
+- **Material UI 5.12.3** - Component library
+- **Emotion 11** - CSS-in-JS styling
+- **React Query 5.83.0** - Server state management
+- **React Hook Form 7.60.0** - Form handling
+- **Zod 4.0.5** - Schema validation
+
+### Backend & Infrastructure
+- **Firebase Authentication** - User authentication
+- **Firestore** - NoSQL database
+- **Firebase Admin SDK** - Server-side operations
+- **NextAuth.js 4.24.11** - Authentication middleware
+- **Firebase Storage** - File storage
+
+### Development Tools
+- **Vitest** - Unit testing
+- **Playwright** - E2E testing
+- **ESLint & Prettier** - Code quality
+- **Husky & lint-staged** - Git hooks
+
 
 ### 🔧 EMMA Component Library
 
@@ -878,43 +1360,76 @@ await logAdminAction(
 )
 ```
 
-## 🚨 Critical Security Notes
-
-1. **Never use console.log() for sensitive data** - Use `logAdminAction()` instead
-2. **All healthcare actions must be audited** - User actions, data access, modifications
-3. **Environment variables are required** - Firebase credentials for audit logging
-4. **Session timeouts are enforced** - 8-hour maximum with activity tracking
-5. **Role validation is mandatory** - Check user permissions before data access
+---
 
 ## 🤝 Contributing
 
+We welcome contributions to improve the EMMA Healthcare Admin Panel! Please follow these guidelines:
+
 1. **Fork the repository**
-2. **Create a feature branch**: `git checkout -b feature/healthcare-component`
-3. **Follow EMMA design patterns**: Use existing components and theme
-4. **Add comprehensive tests**: Unit tests for components, E2E for workflows  
-5. **Ensure HIPAA compliance**: No sensitive data in logs, proper audit trails
+2. **Create a feature branch**: `git checkout -b feature/your-feature-name`
+3. **Follow existing patterns**: Use EMMA design system and TypeScript
+4. **Write tests**: Add unit and E2E tests for new features
+5. **Ensure HIPAA compliance**: No sensitive data in logs
 6. **Run quality checks**: `npm run security:audit && npm run test`
-7. **Submit a pull request** with detailed medical use case description
+7. **Submit a pull request** with detailed description
 
-## 📄 License
-
-This project is licensed under the MIT License.
-
-## 🏥 Medical Disclaimer
-
-This software is designed for healthcare administration and medical education management. It includes HIPAA-compliant features but requires proper configuration and deployment practices to maintain regulatory compliance. Always consult with your institution's compliance team before handling protected health information.
+### Contribution Checklist
+- [ ] Code follows TypeScript and Material UI patterns
+- [ ] Tests added/updated
+- [ ] Documentation updated
+- [ ] No console.log() with sensitive data
+- [ ] HIPAA compliance maintained
+- [ ] ESLint and Prettier checks pass
 
 ---
 
-## 🎯 TypeScript-First Healthcare Platform *(Updated July 21, 2025)*
+## 📚 Additional Resources
 
-**EMMA Healthcare Admin Panel V2** is now a fully TypeScript-native medical education administration platform, featuring:
+- **Architecture Documentation**: See `ARCHITECTURE-2025-08-09.md` for detailed system design
+- **Development Standards**: Review `CLAUDE.md` for coding guidelines
+- **Firebase Documentation**: [Firebase Docs](https://firebase.google.com/docs)
+- **Material UI Documentation**: [Material UI Docs](https://mui.com/)
+- **Next.js Documentation**: [Next.js Docs](https://nextjs.org/docs)
 
-- ✅ **Complete TypeScript Migration** - All frontend code converted with industry standards
-- ✅ **Type-Safe Healthcare Components** - Full IntelliSense support for medical data
-- ✅ **Zero DOM Prop Warnings** - Clean React development experience  
-- ✅ **Development-Safe Authentication** - Works without Firebase setup
-- ✅ **Material UI 5 + TypeScript** - Proper typed component integration
-- ✅ **HIPAA Compliance Maintained** - All security features preserved
+---
 
-Built with **Next.js + React + TypeScript + Material UI 5** for professional healthcare administration.
+## 🔒 Security
+
+### Reporting Security Issues
+Please report security vulnerabilities privately through the repository's security tab or contact the maintainers directly. Do not create public issues for security problems.
+
+### Security Best Practices
+- Never commit `.env.local` or any files with credentials
+- Use Firebase Admin SDK only on server-side
+- Always validate and sanitize user input
+- Follow HIPAA guidelines for healthcare data
+- Regular security audits with `npm audit`
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License. See the LICENSE file for details.
+
+---
+
+## 🏥 Medical Disclaimer
+
+This software is designed for healthcare administration and medical education management. It includes HIPAA-compliant features but requires proper configuration and deployment practices to maintain regulatory compliance. Always consult with your institution's compliance team before handling protected health information (PHI).
+
+---
+
+## 👥 Support
+
+For help and support:
+- Check the [Troubleshooting](#-troubleshooting) section
+- Review existing GitHub issues
+- Create a new issue with detailed information
+- Contact the development team
+
+---
+
+**Built with ❤️ for Healthcare Education**
+
+*EMMA Healthcare Admin Panel V2 - Empowering Medical Education Management*
